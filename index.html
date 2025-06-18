@@ -4,17 +4,17 @@
 <head>
   <meta charset="UTF-8" />
   <title>Fallout Simulation Tool</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     h1 { text-align: center; }
     .control { margin-bottom: 10px; }
     label { display: block; margin-bottom: 5px; font-weight: bold; }
-    select, input[type="number"], input[type="text"] { width: 100%; padding: 8px; }
+    select, input[type="number"] { width: 100%; padding: 8px; }
     #map { height: 500px; margin-top: 20px; }
     #result { margin-top: 20px; }
   </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
 </head>
 <body>
   <h1>Fallout Simulation Tool</h1>
@@ -63,16 +63,22 @@
   </div>
 
   <div class="control">
-    <label>Click on Map to Select Fallout Origin:</label>
+    <label>Click on Map or select plant to simulate fallout center:</label>
     <div id="map"></div>
   </div>
 
   <div id="result">
-    <p><strong>Fallout projection will appear here after selection.</strong></p>
+    <p><strong>Fallout projection will be displayed here.</strong></p>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script>
+    const plantCoordinates = {
+      bushehr: [28.8296, 50.8925],
+      fukushima: [37.421, 141.032],
+      chernobyl: [51.2768, 30.2219]
+    };
+
     const map = L.map('map').setView([30.0, 50.0], 4);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
@@ -80,20 +86,32 @@
 
     let falloutCircle;
 
-    map.on('click', function(e) {
-      const latlng = e.latlng;
+    function drawFallout(latlng) {
       if (falloutCircle) map.removeLayer(falloutCircle);
-
       falloutCircle = L.circle(latlng, {
         color: 'red',
         fillColor: '#f03',
-        fillOpacity: 0.5,
+        fillOpacity: 0.4,
         radius: 50000
       }).addTo(map);
 
       document.getElementById('result').innerHTML = `
-        <p><strong>Fallout Origin Selected:</strong><br>
+        <p><strong>Fallout Origin:</strong><br>
         Latitude: ${latlng.lat.toFixed(2)}, Longitude: ${latlng.lng.toFixed(2)}</p>`;
+    }
+
+    document.getElementById('plant').addEventListener('change', function () {
+      const selected = this.value;
+      if (plantCoordinates[selected]) {
+        const coords = plantCoordinates[selected];
+        const latlng = L.latLng(coords[0], coords[1]);
+        map.setView(latlng, 7);
+        drawFallout(latlng);
+      }
+    });
+
+    map.on('click', function(e) {
+      drawFallout(e.latlng);
     });
   </script>
 </body>
