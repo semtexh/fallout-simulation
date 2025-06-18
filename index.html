@@ -1,14 +1,15 @@
+
 <!DOCTYPE html>
 <html lang="en">
- <head>
-  <meta charset="utf-8"/>
-  <title>
-   Fallout Simulation Tool
-  </title>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<head>
+  <meta charset="UTF-8">
+  <title>Fallout Simulation Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-ellipse@1.0.0/dist/leaflet.ellipse.min.js"></script>
   <style>
-   body { font-family: Arial, sans-serif; margin: 12px; }
+    body { font-family: Arial, sans-serif; margin: 12px; }
     h2 { text-align: center; margin-bottom: 12px; }
     .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
     label { font-size: 14px; }
@@ -31,109 +32,67 @@
       .controls label { flex: 1 1 220px; }
     }
   </style>
- </head>
- <body>
-  <h2>
-   Fallout Simulation Tool
-  </h2>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+</head>
+<body>
+  <h2>Fallout Simulation Tool</h2>
+
   <div class="controls">
-   <label>
-    Nuclear Plant:
-    <select id="plant" onchange="updateMarker()">
-     <option value="">
-      Select a facility
-     </option>
-     <option value="bushehr">
-      Bushehr
-     </option>
-     <option value="darkhovin">
-      Darkhovin
-     </option>
-     <option value="arak">
-      Arak (IR-40)
-     </option>
-     <option value="natanz">
-      Natanz
-     </option>
-     <option value="fordow">
-      Fordow
-     </option>
-     <option value="isfahan">
-      Isfahan
-     </option>
-     <option value="tehran">
-      Tehran
-     </option>
-    </select>
-   </label>
-   <label>
-    Scenario Type:
-    <select id="scenarioType">
-     <option value="meltdown">
-      Reactor Meltdown
-     </option>
-     <option value="steam_fire">
-      Steam Explosion + Fire
-     </option>
-     <option value="high_temp_attack">
-      High-Temperature Attack
-     </option>
-    </select>
-   </label>
-   <label>
-    Wind Direction (°):
-    <input id="windDir" placeholder="e.g. 90" type="number"/>
-   </label>
-   <label>
-    Wind Speed (km/h):
-    <input id="windSpeed" placeholder="e.g. 30" type="number"/>
-   </label>
-   <label>
-    Temperature:
-    <select id="temperature">
-     <option value="normal">
-      Normal
-     </option>
-     <option value="low">
-      Low
-     </option>
-     <option value="high">
-      High
-     </option>
-    </select>
-   </label>
-   <label>
-    Precipitation:
-    <select id="precipitation">
-     <option value="none">
-      None
-     </option>
-     <option value="light">
-      Light Rain
-     </option>
-     <option value="heavy">
-      Heavy Rain
-     </option>
-    </select>
-   </label>
+    <label>Nuclear Plant:
+      <select id="plant" onchange="updateMarker()">
+        <option value="">Select a facility</option>
+        <option value="bushehr">Bushehr</option>
+        <option value="darkhovin">Darkhovin</option>
+        <option value="arak">Arak (IR-40)</option>
+        <option value="natanz">Natanz</option>
+        <option value="fordow">Fordow</option>
+        <option value="isfahan">Isfahan</option>
+        <option value="tehran">Tehran</option>
+      </select>
+    </label>
+    <label>Scenario Type:
+      <select id="scenarioType">
+        <option value="meltdown">Reactor Meltdown</option>
+        <option value="steam_fire">Steam Explosion + Fire</option>
+        <option value="high_temp_attack">High-Temperature Attack</option>
+      </select>
+    </label>
+    <label>Wind Direction (°):
+      <input type="number" id="windDir" placeholder="e.g. 90">
+    </label>
+    <label>Wind Speed (km/h):
+      <input type="number" id="windSpeed" placeholder="e.g. 30">
+    </label>
+    <label>Temperature:
+      <select id="temperature">
+        <option value="normal">Normal</option>
+        <option value="low">Low</option>
+        <option value="high">High</option>
+      </select>
+    </label>
+    <label>Precipitation:
+      <select id="precipitation">
+        <option value="none">None</option>
+        <option value="light">Light Rain</option>
+        <option value="heavy">Heavy Rain</option>
+      </select>
+    </label>
   </div>
+
   <div class="controls">
-   <button onclick="calculateFallout()">
-    ☢️ Calculate Fallout
-   </button>
-   <button onclick="exportToPDF()">
-    📄 Export to PDF
-   </button>
+    <button onclick="calculateFallout()">☢️ Calculate Fallout</button>
+    <button onclick="exportToPDF()">📄 Export to PDF</button>
   </div>
-  <div id="map" style="height: 400px; width: 100%; margin-top: 10px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
-  </div>
-  <div id="overlayTime">
-   ⏱ ETA: Not calculated
-  </div>
-  <div id="result">
-  </div>
+
+  <div id="map"></div>
+  <div id="overlayTime">⏱ ETA: Not calculated</div>
+  <div id="result"></div>
+
   <script>
-   let map;
+    let map;
     let marker;
     let falloutZone;
 
@@ -189,7 +148,6 @@
       }).addTo(map);
       document.getElementById("result").innerText = `☢️ Fallout zone (ellipse) rendered with length ≈ ${Math.round(length)}m`;
 
-      // ETA overlay calculation
       map.on('click', function(e) {
         const start = facilities[plant];
         const end = [e.latlng.lat, e.latlng.lng];
@@ -205,7 +163,7 @@
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         const distance = R * c;
 
-        const hours = distance / (windSpeed * 1000); // windSpeed in km/h
+        const hours = distance / (windSpeed * 1000);
         const etaText = "⏱ ETA to this point: " + Math.round(hours * 10) / 10 + " hrs";
         document.getElementById("overlayTime").innerText = etaText;
       });
@@ -242,5 +200,5 @@
 
     window.onload = initMap;
   </script>
- </body>
+</body>
 </html>
