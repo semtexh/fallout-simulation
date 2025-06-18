@@ -15,12 +15,12 @@
   .controls {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
     justify-content: space-between;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
   }
   .controls label {
-    flex: 1 1 200px;
+    flex: 1 1 220px;
     font-size: 14px;
   }
   select, input, button {
@@ -32,33 +32,36 @@
   #map {
     height: 500px;
     width: 100%;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.25);
     margin-top: 10px;
   }
   #overlayTime {
     position: absolute;
-    top: 65px;
+    top: 70px;
     left: 15px;
     background: rgba(0, 0, 0, 0.6);
     color: white;
-    padding: 4px 10px;
+    padding: 6px 12px;
     border-radius: 4px;
     font-size: 13px;
-    z-index: 999;
+    z-index: 1000;
   }
   #result {
-    margin-top: 12px;
+    margin-top: 10px;
     font-weight: bold;
     font-size: 15px;
   }
-  @media (max-width: 600px) {
+  @media (max-width: 640px) {
     .controls {
       flex-direction: column;
     }
+    #map {
+      height: 400px;
+    }
     #overlayTime {
       font-size: 12px;
-      top: 55px;
+      top: 60px;
       left: 10px;
     }
   }
@@ -93,50 +96,28 @@
 </div>
 
   <h2>Fallout Simulation Tool</h2>
-  
-<div class="controls">
-  <label>Nuclear Plant:
-    <select id="plant">
-      <option value="">Select a facility</option>
-      <option value="bushehr">Bushehr</option>
-      <option value="darkhovin">Darkhovin</option>
-      <option value="arak">Arak (IR-40)</option>
-      <option value="natanz">Natanz</option>
-      <option value="fordow">Fordow</option>
-      <option value="isfahan">Isfahan</option>
-      <option value="tehran">Tehran</option>
-    </select>
-  </label>
-  <label>Scenario Type:
-    <select id="scenarioType">
-      <option value="meltdown">Reactor Meltdown</option>
-      <option value="steam_fire">Steam Explosion + Fire</option>
-      <option value="high_temp_attack">High-Temperature Attack</option>
-    </select>
-  </label>
-  <label>Wind Direction (°):
-    <input type="number" id="windDir" placeholder="e.g. 90">
-  </label>
-  <label>Wind Speed (km/h):
-    <input type="number" id="windSpeed" placeholder="e.g. 30">
-  </label>
-  <label>Temperature:
-    <select id="temperature">
-      <option value="normal">Normal</option>
-      <option value="low">Low</option>
-      <option value="high">High</option>
-    </select>
-  </label>
-  <label>Precipitation:
-    <select id="precipitation">
-      <option value="none">None</option>
-      <option value="light">Light Rain</option>
-      <option value="heavy">Heavy Rain</option>
-    </select>
-  </label>
-</div>
-<div class="controls">
-  <button onclick="calculateFallout()">☢️ Calculate Fallout</button>
-  <button onclick="exportToPDF()">📄 Export to PDF</button>
-</div>
+  <div class="controls">
+    <label>Nuclear Plant:
+      <select id="plant">
+        <option value="">Select a facility</option>
+        <option value="bushehr">Bushehr</option>
+        <option value="darkhovin">Darkhovin</option>
+        <option value="arak">Arak (IR-40)</option>
+        <option value="natanz">Natanz</option>
+        <option value="fordow">Fordow</option>
+        <option value="isfahan">Isfahan</option>
+        <option value="tehran">Tehran</option>
+      </select>
+    </label>
+    
+<label>Scenario Type:
+  <select id="scenarioType">
+    <option value="meltdown">Reactor Meltdown</option>
+    <option value="steam_fire">Steam Explosion + Fire</option>
+    <option value="high_temp_attack">High-Temperature Attack</option>
+  </select></label>
+</label>
 
+
+
+<div id="result"></div>
