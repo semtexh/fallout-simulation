@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.ellipse@1.0.2/leaflet.ellipse.js"></script>
+  <script src="https://unpkg.com/leaflet-ellipse@1.0.0/dist/leaflet.ellipse.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 12px; }
     h2 { text-align: center; margin-bottom: 12px; }
@@ -32,6 +32,10 @@
       .controls label { flex: 1 1 220px; }
     }
   </style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 </head>
 <body>
   <h2>Fallout Simulation Tool</h2>
@@ -127,7 +131,10 @@
       const temperature = document.getElementById("temperature").value;
       const scenario = document.getElementById("scenarioType").value;
 
-      if (!plant || !facilities[plant] || isNaN(windSpeed) || isNaN(windDir)) return;
+      if (!plant || !facilities[plant] || isNaN(windSpeed) || isNaN(windDir)) {
+        alert("Please enter valid plant, wind speed, and direction.");
+        return;
+      }
 
       let length = windSpeed * 1000;
       if (temperature === "high") length *= 1.2;
@@ -135,15 +142,61 @@
       const width = length / 3;
 
       if (falloutZone) map.removeLayer(falloutZone);
+
       falloutZone = L.ellipse(facilities[plant], [length, width], windDir, {
         color: 'red', fillColor: 'orange', fillOpacity: 0.4
       }).addTo(map);
+      document.getElementById("result").innerText = `☢️ Fallout zone (ellipse) rendered with length ≈ ${Math.round(length)}m`;
 
-      document.getElementById("result").innerText = `Fallout zone estimated spread length: ${Math.round(length)} meters`;
+      // ETA overlay calculation
+      map.on('click', function(e) {
+        const start = facilities[plant];
+        const end = [e.latlng.lat, e.latlng.lng];
+        const R = 6371e3;
+        const toRad = deg => deg * Math.PI / 180;
+
+        const φ1 = toRad(start[0]);
+        const φ2 = toRad(end[0]);
+        const Δφ = toRad(end[0] - start[0]);
+        const Δλ = toRad(end[1] - start[1]);
+
+        const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+
+        const hours = distance / (windSpeed * 1000); // windSpeed in km/h
+        const etaText = "⏱ ETA to this point: " + Math.round(hours * 10) / 10 + " hrs";
+        document.getElementById("overlayTime").innerText = etaText;
+      });
+
     }
 
     function exportToPDF() {
-      document.getElementById("result").innerText = "PDF export feature in progress.";
+  const resultText = document.getElementById("result").innerText;
+  const etaText = document.getElementById("overlayTime").innerText;
+  const inputData = [
+    "📋 Fallout Simulation Report",
+    "Nuclear Plant: " + document.getElementById("plant").value,
+    "Scenario: " + document.getElementById("scenarioType").value,
+    "Wind Direction: " + document.getElementById("windDir").value + "°",
+    "Wind Speed: " + document.getElementById("windSpeed").value + " km/h",
+    "Temperature: " + document.getElementById("temperature").value,
+    "Precipitation: " + document.getElementById("precipitation").value,
+    resultText,
+    etaText
+  ];
+
+  html2canvas(document.querySelector("#map")).then(canvas => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape" });
+    const imgData = canvas.toDataURL("image/png");
+
+    inputData.forEach((line, i) => doc.text(line, 10, 10 + i * 8));
+    doc.addImage(imgData, "PNG", 10, 80, 270, 90);
+    doc.save("Fallout_Simulation_Report.pdf");
+  });
+}
+      document.getElementById("result").innerText = "PDF export feature is being developed.";
     }
 
     window.onload = initMap;
