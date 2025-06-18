@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.ellipse@1.0.2/leaflet.ellipse.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 12px; }
     h2 { text-align: center; margin-bottom: 12px; }
@@ -89,6 +90,7 @@
   <script>
     let map;
     let marker;
+    let falloutZone;
 
     const facilities = {
       bushehr: [28.9682, 50.8346],
@@ -119,11 +121,29 @@
     }
 
     function calculateFallout() {
-      document.getElementById("result").innerText = "Fallout calculated (placeholder)";
+      const plant = document.getElementById("plant").value;
+      const windSpeed = parseFloat(document.getElementById("windSpeed").value);
+      const windDir = parseFloat(document.getElementById("windDir").value);
+      const temperature = document.getElementById("temperature").value;
+      const scenario = document.getElementById("scenarioType").value;
+
+      if (!plant || !facilities[plant] || isNaN(windSpeed) || isNaN(windDir)) return;
+
+      let length = windSpeed * 1000;
+      if (temperature === "high") length *= 1.2;
+      if (scenario === "high_temp_attack") length *= 1.2;
+      const width = length / 3;
+
+      if (falloutZone) map.removeLayer(falloutZone);
+      falloutZone = L.ellipse(facilities[plant], [length, width], windDir, {
+        color: 'red', fillColor: 'orange', fillOpacity: 0.4
+      }).addTo(map);
+
+      document.getElementById("result").innerText = `Fallout zone estimated spread length: ${Math.round(length)} meters`;
     }
 
     function exportToPDF() {
-      document.getElementById("result").innerText = "PDF exported (placeholder)";
+      document.getElementById("result").innerText = "PDF export feature in progress.";
     }
 
     window.onload = initMap;
