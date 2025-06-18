@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fallout Simülasyonu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      background-color: #f4f4f4;
+    }
+    header {
+      background-color: #990000;
+      color: white;
+      text-align: center;
+      padding: 15px 10px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .controls {
+      padding: 10px;
+      background: #fff;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-around;
+    }
+    .controls label, .controls select, .controls button {
+      flex: 1 1 45%;
+      min-width: 140px;
+    }
+    #map {
+      height: 400px;
+      margin-top: 5px;
+    }
+    #report {
+      padding: 10px;
+      background: #fff;
+    }
+    #mapImage {
+      width: 100%;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+    }
+    @media (min-width: 600px) {
+      #map {
+        height: 500px;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>🧨 Fallout Spread Simulation</header>
+<div class="controls">
+  
+    <label for="plant">Select Nuclear Plant:</label>
+    <select id="plant">
+        <option value="bushehr">Bushehr, Iran</option>
+        <option value="fukushima">Fukushima, Japan</option>
+        <option value="chernobyl">Chernobyl, Ukraine</option>
+    </select>
+
+    
+    <label for="scenario">Select Scenario Type:</label>
+    <select id="scenario">
+    
+    
+    <label for="month">Select Month:</label>
+    <select id="month">
+        <option value="January">January</option>
+        <option value="February">February</option>
+        <option value="March">March</option>
+        <option value="April">April</option>
+        <option value="May">May</option>
+        <option value="June">June</option>
+        <option value="July">July</option>
+        <option value="August">August</option>
+        <option value="September">September</option>
+        <option value="October">October</option>
+        <option value="November">November</option>
+        <option value="December">December</option>
+    </select>
+
+    
+    <label for="wind">Wind Direction (°):</label>
+    <input type="number" id="wind" min="0" max="360" step="1" placeholder="Auto from month or enter manually">
+
+    <label for="model">Select Calculation Model:</label>
+    
+    
+    <select id="model">
+        <option value="simple">Simple Spread Model</option>
+        <option value="wind_factor">Wind-Weighted Spread Model</option>
+        <option value="advanced">Advanced Elliptical Model</option>
+    </select>
+    
+        <option value="meltdown">Reactor Meltdown (like Fukushima)</option>
+        <option value="fire_explosion">Steam Explosion & Fire (like Chernobyl)</option>
+        <option value="attack">Attack-Based High Heat Explosion</option>
+    </select>
+    
+  <select id="plant">
+    <option value="bushehr">Buşehr, İran</option>
+    <option value="fukushima">Fukushima, Japonya</option>
+    <option value="chernobyl">Çernobil, Ukrayna</option>
+  </select>
+  <button onclick="startSimulation()">Start Simulation</button>
+  <button onclick="generateReport()">Report</button>
+  <button onclick="exportDownload PDF()">Download PDF</button>
+</div>
+<div id="map"></div>
+<div id="report">
+  <h3>📝 Simülasyon Reportu</h3>
+  <div id="reportContent">No simulation run yet.</div>
+  <img id="mapImage" />
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script>
+  const map = L.map('map').setView([30, 50], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Harita: © OpenStreetMap'
+  }).addTo(map);
+  const plants = {
+    bushehr: [28.9186, 50.8385],
+    fukushima: [37.4210, 141.0328],
+    chernobyl: [51.2768, 30.2219]
+  };
+  let falloutLayers = [];
+  let 
+    const scenario = document.getElementById("scenario").value;
+    const model = document.getElementById('model').value;
+
+    const month = document.getElementById("month").value;
+    const windDirections = {
+        January: 315, February: 330, March: 0, April: 45, May: 90,
+        June: 110, July: 135, August: 145, September: 120,
+        October: 80, November: 30, December: 320
+    };
+    
+    let windDeg = windDirections[month];
+    const manualWind = document.getElementById("wind").value;
+    if (manualWind !== "") {
+        windDeg = parseFloat(manualWind);
+    }
+    
+
+    simData = { scenario: scenario, model: model, month: month, windDeg: windDeg,
+    };
+  function toRadians(deg) {
+    return deg * Math.PI / 180;
+  }
+  function clearFallout() {
+    falloutLayers.forEach(layer => map.removeLayer(layer));
+    falloutLayers = [];
+  }
+  function drawEllipse(center, major_km, minor_km, angle_deg, label) {
+    const latlngs = [];
+    const angle_rad = toRadians(angle_deg);
+    const steps = 64;
+    for (let i = 0; i <= steps; i++) {
+      const theta = 2 * Math.PI * i / steps;
+      const x = major_km * Math.cos(theta);
+      const y = minor_km * Math.sin(theta);
+      const xr = x * Math.cos(angle_rad) - y * Math.sin(angle_rad);
+      const yr = x * Math.sin(angle_rad) + y * Math.cos(angle_rad);
+      const dx = yr / 110.574;
+      const dy = xr / (111.320 * Math.cos(toRadians(center[0])));
+      latlngs.push([center[0] + dx, center[1] + dy]);
+    }
+    
+    const poly = L.polygon(latlngs, { color: "red", weight: 1, fillOpacity: 0.2 }).addTo(map);
+    const labelLatLng = latlngs[Math.floor(latlngs.length / 4)];
+    const label = L.marker(labelLatLng, {
+      icon: L.divIcon({
+        className: 'fallout-label',
+        html: '<div style="background:rgba(255,255,255,0.6);padding:2px 6px;border-radius:4px;font-size:12px;border:1px solid #900;">' + label + '</div>',
+        iconSize: [60, 20]
+      })
+    }).addTo(map);
+    falloutLayers.push(label);
+    
+    falloutLayers.push(poly);
+  }
+  function startSimulation() {
+    clearFallout();
+    const plantKey = document.getElementById("plant").value;
+    
+    let center = plants[plantKey];
+    if (simData.clickedLocation) {
+        center = simData.clickedLocation;
+    }
+    
+    map.setView(center, 6);
+    
+    const scenario = document.getElementById("scenario").value;
+    const model = document.getElementById('model').value;
+
+    const month = document.getElementById("month").value;
+    const windDirections = {
+        January: 315, February: 330, March: 0, April: 45, May: 90,
+        June: 110, July: 135, August: 145, September: 120,
+        October: 80, November: 30, December: 320
+    };
+    
+    let windDeg = windDirections[month];
+    const manualWind = document.getElementById("wind").value;
+    if (manualWind !== "") {
+        windDeg = parseFloat(manualWind);
+    }
+    
+
+    simData = { scenario: scenario, model: model, month: month, windDeg: windDeg,
+    
+      plant: plantKey,
+      location: center,
+      windDeg: 135,
+      falloutTimes: ["+3 Hours", "+6 Hours", "+12 Hours", "+24 Hours"],
+      distances: [100, 200, 300, 400],
+      timestamp: new Date().toLocaleString()
+    };
+    const minorFactor = 0.6;
+    simData.distances.forEach((major, i) => {
+      const minor = major * minorFactor;
+      drawEllipse(center, major, minor, simData.windDeg, simData.falloutTimes[i]);
+    });
+    setTimeout(() => {
+      html2canvas(document.getElementById("map")).then(canvas => {
+        document.getElementById("mapImage").src = canvas.toDataURL("image/png");
+      });
+    }, 1500);
+  }
+  function generateReport() {
+    if (!simData.plant) {
+      document.getElementById("reportContent").innerHTML = "Please start the simulation first.";
+      return;
+    }
+    const report = `
+      <p><strong>Plant:</strong> ${simData.plant}</p><p><strong>Scenario:</strong> ${simData.scenario}</p><p><strong>Model:</strong> ${simData.model}</p>
+      
+    <p><strong>Coordinates:</strong> ${simData.clickedLocation ? simData.clickedLocation.join(', ') : simData.location.join(', ')}</p>
+    
+      <p><strong>Month:</strong> ${simData.month}</p><p><strong>Wind Direction:</strong> ${simData.windDeg}°</p>
+      <p><strong>Timestamp:</strong> ${simData.timestamp}</p>
+      <ul>
+        ${simData.falloutTimes.map((t, i) => `<li>${t}: ${simData.distances[i]} km</li>`).join("")}
+      </ul>
+    `;
+    document.getElementById("reportContent").innerHTML = report;
+  }
+  function exportDownload PDF() {
+    const element = document.getElementById("report");
+    html2pdf().from(element).save("Fallout_Simulasyon_Reportu_Web.pdf");
+  }
+</script>
+</body>
+</html>
