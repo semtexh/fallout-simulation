@@ -93,26 +93,50 @@
 </div>
 
   <h2>Fallout Simulation Tool</h2>
-  <div class="controls">
-    <label>Nuclear Plant:
-      <select id="plant">
-        <option value="">Select a facility</option>
-        <option value="bushehr">Bushehr</option>
-        <option value="darkhovin">Darkhovin</option>
-        <option value="arak">Arak (IR-40)</option>
-        <option value="natanz">Natanz</option>
-        <option value="fordow">Fordow</option>
-        <option value="isfahan">Isfahan</option>
-        <option value="tehran">Tehran</option>
-      </select>
-    </label>
-    
-<label>Scenario Type:
-  <select id="scenarioType">
-    <option value="meltdown">Reactor Meltdown</option>
-    <option value="steam_fire">Steam Explosion + Fire</option>
-    <option value="high_temp_attack">High-Temperature Attack</option>
-  </select></label>
-</label>
-
+  
+<div class="controls">
+  <label>Nuclear Plant:
+    <select id="plant">
+      <option value="">Select a facility</option>
+      <option value="bushehr">Bushehr</option>
+      <option value="darkhovin">Darkhovin</option>
+      <option value="arak">Arak (IR-40)</option>
+      <option value="natanz">Natanz</option>
+      <option value="fordow">Fordow</option>
+      <option value="isfahan">Isfahan</option>
+      <option value="tehran">Tehran</option>
+    </select>
+  </label>
+  <label>Scenario Type:
+    <select id="scenarioType">
+      <option value="meltdown">Reactor Meltdown</option>
+      <option value="steam_fire">Steam Explosion + Fire</option>
+      <option value="high_temp_attack">High-Temperature Attack</option>
+    </select>
+  </label>
+  <label>Wind Direction (°):
+    <input type="number" id="windDir" placeholder="e.g. 90">
+  </label>
+  <label>Wind Speed (km/h):
+    <input type="number" id="windSpeed" placeholder="e.g. 30">
+  </label>
+  <label>Temperature:
+    <select id="temperature">
+      <option value="normal">Normal</option>
+      <option value="low">Low</option>
+      <option value="high">High</option>
+    </select>
+  </label>
+  <label>Precipitation:
+    <select id="precipitation">
+      <option value="none">None</option>
+      <option value="light">Light Rain</option>
+      <option value="heavy">Heavy Rain</option>
+    </select>
+  </label>
+</div>
+<div class="controls">
+  <button onclick="calculateFallout()">☢️ Calculate Fallout</button>
+  <button onclick="exportToPDF()">📄 Export to PDF</button>
+</div>
 
