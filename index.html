@@ -223,6 +223,132 @@ Precipitation: ${precip}
   }
 </script>
 
+
+<script>
+  let originMarker, targetMarker, connector, falloutEllipse;
+
+  const plantCoordinates = {
+    bushehr: [28.8296, 50.8919],
+    darkhovin: [30.7041, 48.4961],
+    arak: [34.3995, 49.7444],
+    natanz: [33.7243, 51.7269],
+    fordow: [34.7031, 50.9969],
+    isfahan: [32.6158, 51.6541],
+    tehran: [35.7070, 51.3950]
+  };
+
+  const map = L.map('map').setView([32.0, 53.0], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data © OpenStreetMap contributors'
+  }).addTo(map);
+
+  let origin = null;
+  let target = null;
+
+  document.getElementById("plant").addEventListener("change", function() {
+    const selected = this.value;
+    if (selected && plantCoordinates[selected]) {
+      const coords = plantCoordinates[selected];
+      origin = L.latLng(coords[0], coords[1]);
+      map.setView(origin, 8);
+      if (originMarker) map.removeLayer(originMarker);
+      originMarker = L.marker(origin).addTo(map).bindPopup(selected).openPopup();
+      document.getElementById("result").innerText = "Now click a target location to estimate fallout arrival time.";
+    }
+  });
+
+  map.on('click', function(e) {
+    if (!target) {
+      target = e.latlng;
+      if (targetMarker) map.removeLayer(targetMarker);
+      targetMarker = L.marker(target).addTo(map).bindPopup("Target Location").openPopup();
+    } else {
+      target = e.latlng;
+      targetMarker.setLatLng(target);
+    }
+  });
+
+  function toRadians(deg) {
+    return deg * Math.PI / 180;
+  }
+
+  function toDegrees(rad) {
+    return rad * 180 / Math.PI;
+  }
+
+  function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+              Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  function getBearing(lat1, lon1, lat2, lon2) {
+    const dLon = toRadians(lon2 - lon1);
+    const y = Math.sin(dLon) * Math.cos(toRadians(lat2));
+    const x = Math.cos(toRadians(lat1)) * Math.sin(toRadians(lat2)) -
+              Math.sin(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.cos(dLon);
+    return (toDegrees(Math.atan2(y, x)) + 360) % 360;
+  }
+
+  function drawFalloutEllipse(center, windDir, windSpeed, tempModifier) {
+    if (falloutEllipse) map.removeLayer(falloutEllipse);
+
+    const majorAxis = windSpeed * tempModifier * 10;
+    const minorAxis = majorAxis / 3;
+
+    falloutEllipse = L.ellipse(center, [majorAxis * 1000, minorAxis * 1000], windDir, {
+      color: 'red',
+      weight: 2,
+      fillOpacity: 0.3
+    }).addTo(map);
+  }
+
+  function calculateFallout() {
+    if (!origin || !target) {
+      alert("Please select both origin and target points.");
+      return;
+    }
+
+    const windDir = parseFloat(document.getElementById('windDir').value);
+    const windSpeed = parseFloat(document.getElementById('windSpeed').value);
+    const temp = document.getElementById('temperature').value;
+    const precip = document.getElementById('precipitation').value;
+
+    if (isNaN(windDir) || isNaN(windSpeed) || windSpeed <= 0) {
+      alert("Please enter valid wind direction and speed.");
+      return;
+    }
+
+    const bearing = getBearing(origin.lat, origin.lng, target.lat, target.lng);
+    const distance = getDistance(origin.lat, origin.lng, target.lat, target.lng);
+    const angleDiff = Math.abs(windDir - bearing);
+    const withinRange = angleDiff <= 45 || angleDiff >= 315;
+
+    let modifier = 1.0;
+    if (temp === 'low') modifier *= 0.9;
+    if (temp === 'high') modifier *= 1.2;
+    if (precip === 'light') modifier *= 0.9;
+    if (precip === 'heavy') modifier *= 0.7;
+
+    drawFalloutEllipse(origin, windDir, windSpeed, modifier);
+
+    if (connector) map.removeLayer(connector);
+    connector = L.polyline([origin, target], { color: 'blue', dashArray: '5,10' }).addTo(map);
+
+    if (withinRange) {
+      const hours = (distance / windSpeed * modifier).toFixed(2);
+      document.getElementById("result").innerText = `Fallout is expected to reach this point in approximately ${hours} hours (adjusted for temp & rain).`;
+    } else {
+      document.getElementById("result").innerText = "Fallout is unlikely to reach this point due to wind direction.";
+    }
+  }
+</script>
+<button onclick="calculateFallout()">☢️ Calculate Fallout</button>
+
 </script>
 </body>
 </html>
