@@ -37,7 +37,7 @@
 
   <div class="controls">
     <label>Nuclear Plant:
-      <select id="plant">
+      <select id="plant" onchange="updateMarker()">
         <option value="">Select a facility</option>
         <option value="bushehr">Bushehr</option>
         <option value="darkhovin">Darkhovin</option>
@@ -87,13 +87,45 @@
   <div id="result"></div>
 
   <script>
+    let map;
+    let marker;
+
+    const facilities = {
+      bushehr: [28.9682, 50.8346],
+      darkhovin: [30.7033, 48.4036],
+      arak: [34.0916, 49.6892],
+      natanz: [33.7243, 51.7297],
+      fordow: [34.7025, 50.9946],
+      isfahan: [32.6459, 51.6674],
+      tehran: [35.6892, 51.3890]
+    };
+
     function initMap() {
-      const map = L.map('map').setView([29.0, 52.6], 6);
+      map = L.map('map').setView([32.0, 52.0], 6);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18,
         attribution: '© OpenStreetMap'
       }).addTo(map);
     }
+
+    function updateMarker() {
+      const plant = document.getElementById("plant").value;
+      if (!plant || !facilities[plant]) return;
+
+      const coords = facilities[plant];
+      if (marker) map.removeLayer(marker);
+      marker = L.marker(coords).addTo(map).bindPopup(plant).openPopup();
+      map.flyTo(coords, 7);
+    }
+
+    function calculateFallout() {
+      document.getElementById("result").innerText = "Fallout calculated (placeholder)";
+    }
+
+    function exportToPDF() {
+      document.getElementById("result").innerText = "PDF exported (placeholder)";
+    }
+
     window.onload = initMap;
   </script>
 </body>
