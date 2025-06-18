@@ -61,7 +61,44 @@
   <div class="control">
     <p>Select a facility or click on the map for fallout origin. Then click a second point for fallout reach estimate.</p>
     <div id="map"></div>
-  </div>
+  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  async function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Fallout Simulation Report", 10, 20);
+
+    const windDir = document.getElementById("windDir").value;
+    const windSpeed = document.getElementById("windSpeed").value;
+    const temp = document.getElementById("temperature").value;
+    const precip = document.getElementById("precipitation").value;
+    const facility = document.getElementById("plant").value;
+
+    const inputSummary = `
+Facility: ${facility}
+Wind Direction: ${windDir}
+Wind Speed: ${windSpeed} km/h
+Temperature: ${temp}
+Precipitation: ${precip}
+    `.trim();
+
+    const lines = doc.splitTextToSize(inputSummary, 180);
+    doc.text(lines, 10, 30);
+
+    const mapArea = document.getElementById("map");
+    const canvas = await html2canvas(mapArea, { useCORS: true });
+    const imgData = canvas.toDataURL("image/png");
+
+    doc.addImage(imgData, 'PNG', 10, 60, 180, 90);
+    doc.save("Fallout_Simulation_Report.pdf");
+  }
+</script>
+<button onclick="exportToPDF()">📄 Export to PDF</button>
+
 
   <div id="result">Status: Waiting for input...</div>
 
@@ -167,6 +204,25 @@
         origin = null;
       }
     });
-  </script>
+  
+<script src="https://unpkg.com/leaflet-ellipse"></script>
+<script>
+  let falloutEllipse;
+
+  function drawFalloutEllipse(center, windDir, windSpeed, tempModifier) {
+    if (falloutEllipse) map.removeLayer(falloutEllipse);
+
+    const majorAxis = windSpeed * tempModifier * 10; // in km
+    const minorAxis = majorAxis / 3;
+
+    falloutEllipse = L.ellipse(center, [majorAxis * 1000, minorAxis * 1000], windDir, {
+      color: 'red',
+      weight: 2,
+      fillOpacity: 0.3
+    }).addTo(map);
+  }
+</script>
+
+</script>
 </body>
 </html>
