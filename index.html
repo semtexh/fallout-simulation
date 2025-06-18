@@ -2,164 +2,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Fallout Simülasyonu</title>
+  <meta charset="UTF-8" />
+  <title>Fallout Simulation Tool</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden;
-      background-color: #f4f4f4;
-    }
-    header {
-      background-color: #990000;
-      color: white;
-      text-align: center;
-      padding: 15px 10px;
-      font-size: 20px;
-      font-weight: bold;
-    }
-    .controls {
-      padding: 10px;
-      background: #fff;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: space-around;
-    }
-    .controls label, .controls select, .controls button {
-      flex: 1 1 45%;
-      min-width: 140px;
-    }
-    #map {
-      height: 400px;
-      margin-top: 5px;
-    }
-    #report {
-      padding: 10px;
-      background: #fff;
-    }
-    #mapImage {
-      width: 100%;
-      margin-top: 10px;
-      border: 1px solid #ccc;
-    }
-    button {
-      padding: 10px;
-      font-size: 16px;
-    }
-    @media (min-width: 600px) {
-      #map {
-        height: 500px;
-      }
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { text-align: center; }
+    .control { margin-bottom: 10px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    select, input[type="number"], input[type="text"] { width: 100%; padding: 8px; }
+    #map { height: 500px; margin-top: 20px; }
+    #result { margin-top: 20px; }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 </head>
 <body>
-<header>🧨 Fallout Yayılım Simülasyonu</header>
-<div class="controls">
-  <label for="plant">Santral Seç:</label>
-  <select id="plant">
-    <option value="bushehr">Buşehr, İran</option>
-    <option value="fukushima">Fukushima, Japonya</option>
-    <option value="chernobyl">Çernobil, Ukrayna</option>
-  </select>
-  <button onclick="startSimulation()">Simülasyon Başlat</button>
-  <button onclick="generateReport()">Rapor</button>
-  <button onclick="exportPDF()">PDF</button>
-</div>
-<div id="map"></div>
-<div id="report">
-  <h3>📝 Simülasyon Raporu</h3>
-  <div id="reportContent">Henüz simülasyon yapılmadı.</div>
-  <img id="mapImage" />
-</div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-<script>
-  const map = L.map('map').setView([30, 50], 5);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: 'Harita: © OpenStreetMap'
-  }).addTo(map);
-  const plants = {
-    bushehr: [28.9186, 50.8385],
-    fukushima: [37.4210, 141.0328],
-    chernobyl: [51.2768, 30.2219]
-  };
-  let falloutLayers = [];
-  let simData = {};
-  function toRadians(deg) {
-    return deg * Math.PI / 180;
-  }
-  function clearFallout() {
-    falloutLayers.forEach(layer => map.removeLayer(layer));
-    falloutLayers = [];
-  }
-  function drawEllipse(center, major_km, minor_km, angle_deg, label) {
-    const latlngs = [];
-    const angle_rad = toRadians(angle_deg);
-    const steps = 64;
-    for (let i = 0; i <= steps; i++) {
-      const theta = 2 * Math.PI * i / steps;
-      const x = major_km * Math.cos(theta);
-      const y = minor_km * Math.sin(theta);
-      const xr = x * Math.cos(angle_rad) - y * Math.sin(angle_rad);
-      const yr = x * Math.sin(angle_rad) + y * Math.cos(angle_rad);
-      const dx = yr / 110.574;
-      const dy = xr / (111.320 * Math.cos(toRadians(center[0])));
-      latlngs.push([center[0] + dx, center[1] + dy]);
-    }
-    const poly = L.polygon(latlngs, { color: "red", weight: 1, fillOpacity: 0.2 }).addTo(map);
-    falloutLayers.push(poly);
-  }
-  function startSimulation() {
-    clearFallout();
-    const plantKey = document.getElementById("plant").value;
-    const center = plants[plantKey];
-    map.setView(center, 6);
-    simData = {
-      plant: plantKey,
-      location: center,
-      windDeg: 135,
-      falloutTimes: ["+3 Saat", "+6 Saat", "+12 Saat", "+24 Saat"],
-      distances: [100, 200, 300, 400],
-      timestamp: new Date().toLocaleString()
-    };
-    const minorFactor = 0.6;
-    simData.distances.forEach((major, i) => {
-      const minor = major * minorFactor;
-      drawEllipse(center, major, minor, simData.windDeg, simData.falloutTimes[i]);
+  <h1>Fallout Simulation Tool</h1>
+
+  <div class="control">
+    <label for="plant">Select Nuclear Plant:</label>
+    <select id="plant">
+      <option value="">-- Select a Plant --</option>
+      <option value="bushehr">Bushehr Nuclear Plant (Iran)</option>
+      <option value="fukushima">Fukushima Daiichi (Japan)</option>
+      <option value="chernobyl">Chernobyl (Ukraine)</option>
+    </select>
+  </div>
+
+  <div class="control">
+    <label for="scenario">Select Scenario Type:</label>
+    <select id="scenario">
+      <option value="">-- Select Scenario --</option>
+      <option value="meltdown">Reactor Meltdown (like Fukushima)</option>
+      <option value="fire_explosion">Steam Explosion & Fire (like Chernobyl)</option>
+      <option value="attack">Attack-Based High Heat Explosion</option>
+    </select>
+  </div>
+
+  <div class="control">
+    <label for="month">Select Month:</label>
+    <select id="month">
+      <option value="jan">January</option>
+      <option value="feb">February</option>
+      <option value="mar">March</option>
+      <option value="apr">April</option>
+      <option value="may">May</option>
+      <option value="jun">June</option>
+      <option value="jul">July</option>
+      <option value="aug">August</option>
+      <option value="sep">September</option>
+      <option value="oct">October</option>
+      <option value="nov">November</option>
+      <option value="dec">December</option>
+    </select>
+  </div>
+
+  <div class="control">
+    <label for="wind">Wind Direction (degrees):</label>
+    <input type="number" id="wind" placeholder="e.g., 90 for East" />
+  </div>
+
+  <div class="control">
+    <label>Click on Map to Select Fallout Origin:</label>
+    <div id="map"></div>
+  </div>
+
+  <div id="result">
+    <p><strong>Fallout projection will appear here after selection.</strong></p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([30.0, 50.0], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    let falloutCircle;
+
+    map.on('click', function(e) {
+      const latlng = e.latlng;
+      if (falloutCircle) map.removeLayer(falloutCircle);
+
+      falloutCircle = L.circle(latlng, {
+        color: 'red',
+        fillColor: '#f03',
+        fillOpacity: 0.5,
+        radius: 50000
+      }).addTo(map);
+
+      document.getElementById('result').innerHTML = `
+        <p><strong>Fallout Origin Selected:</strong><br>
+        Latitude: ${latlng.lat.toFixed(2)}, Longitude: ${latlng.lng.toFixed(2)}</p>`;
     });
-    setTimeout(() => {
-      html2canvas(document.getElementById("map")).then(canvas => {
-        document.getElementById("mapImage").src = canvas.toDataURL("image/png");
-      });
-    }, 1500);
-  }
-  function generateReport() {
-    if (!simData.plant) {
-      document.getElementById("reportContent").innerHTML = "Lütfen önce simülasyon başlatın.";
-      return;
-    }
-    const report = `
-      <p><strong>Santral:</strong> ${simData.plant}</p>
-      <p><strong>Koordinatlar:</strong> ${simData.location[0]}, ${simData.location[1]}</p>
-      <p><strong>Rüzgar Yönü:</strong> ${simData.windDeg}°</p>
-      <p><strong>Zaman:</strong> ${simData.timestamp}</p>
-      <ul>
-        ${simData.falloutTimes.map((t, i) => `<li>${t}: ${simData.distances[i]} km</li>`).join("")}
-      </ul>
-    `;
-    document.getElementById("reportContent").innerHTML = report;
-  }
-  function exportPDF() {
-    const element = document.getElementById("report");
-    html2pdf().from(element).save("Fallout_Simulasyon_Raporu_Web.pdf");
-  }
-</script>
+  </script>
 </body>
 </html>
