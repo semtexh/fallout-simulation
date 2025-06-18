@@ -100,7 +100,13 @@ Precipitation: ${precip}
 <button onclick="exportToPDF()">📄 Export to PDF</button>
 
 
-  <div id="result">Status: Waiting for input...</div>
+  
+<div class="control">
+  <button onclick="calculateFallout()">☢️ Calculate Fallout</button>
+  <button onclick="exportToPDF()">📄 Export to PDF</button>
+</div>
+
+<div id="result">Status: Waiting for input...</div>
 
   <script>
     const plantCoordinates = {
