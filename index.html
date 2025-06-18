@@ -3,358 +3,202 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Fallout Simulator - Iran Nuclear Facilities</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fallout Simulation Tool</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-ellipse"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .control { margin-bottom: 10px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; }
-    select, input[type="number"] { width: 100%; padding: 8px; }
-    #map { height: 500px; margin-top: 20px; }
-    #result { margin-top: 20px; font-weight: bold; color: darkred; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 10px; }
+    h2 { text-align: center; }
+    #map { height: 500px; margin-top: 10px; }
+    .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+    label, select, input, button { font-size: 1rem; width: 100%; }
+    button { padding: 10px; background-color: #004080; color: white; border: none; border-radius: 4px; }
+    #result { margin-top: 15px; font-weight: bold; }
+    @media (min-width: 768px) {
+      .controls { flex-direction: row; flex-wrap: wrap; gap: 20px; }
+      .controls > * { flex: 1; min-width: 200px; }
+    }
   </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </head>
 <body>
-  <h2>Fallout Simulator - Iran Nuclear Facilities</h2>
+  <h2>Fallout Simulation Tool</h2>
+  <div class="controls">
+    <label>Nuclear Plant:
+      <select id="plant">
+        <option value="">Select a facility</option>
+        <option value="bushehr">Bushehr</option>
+        <option value="darkhovin">Darkhovin</option>
+        <option value="arak">Arak (IR-40)</option>
+        <option value="natanz">Natanz</option>
+        <option value="fordow">Fordow</option>
+        <option value="isfahan">Isfahan</option>
+        <option value="tehran">Tehran</option>
+      </select>
+    </label>
+    <label>Wind Direction (°):
+      <input type="number" id="windDir" placeholder="e.g. 90">
+    </label>
+    <label>Wind Speed (km/h):
+      <input type="number" id="windSpeed" placeholder="e.g. 30">
+    </label>
+    <label>Temperature:
+      <select id="temperature">
+        <option value="normal">Normal</option>
+        <option value="low">Low</option>
+        <option value="high">High</option>
+      </select>
+    </label>
+    <label>Precipitation:
+      <select id="precipitation">
+        <option value="none">None</option>
+        <option value="light">Light Rain</option>
+        <option value="heavy">Heavy Rain</option>
+      </select>
+    </label>
+  </div>
+  <div class="controls">
+    <button onclick="calculateFallout()">☢️ Calculate Fallout</button>
+    <button onclick="exportToPDF()">📄 Export to PDF</button>
+  </div>
+  <div id="map"></div>
+  <div id="result"></div>
 
-  <div class="control">
-    <label for="plant">Select Nuclear Facility:</label>
-    <select id="plant">
-      <option value="">-- Select a Facility --</option>
-      <option value="bushehr">Bushehr Nuclear Power Plant</option>
-      <option value="darkhovin">Darkhovin Nuclear Power Plant</option>
-      <option value="arak">IR‑40 (Arak) Heavy Water Reactor</option>
-      <option value="natanz">Natanz Enrichment Facility</option>
-      <option value="fordow">Fordow Enrichment Facility</option>
-      <option value="isfahan">Isfahan Research & Conversion Center</option>
-      <option value="tehran">Tehran Research Reactor</option>
-    </select>
-  </div>
-
-  <div class="control">
-    <label for="windDir">Wind Direction (degrees):</label>
-    <input type="number" id="windDir" placeholder="0-360" />
-  </div>
-  <div class="control">
-    <label for="windSpeed">Wind Speed (km/h):</label>
-    <input type="number" id="windSpeed" placeholder="e.g., 20" />
-  </div>
-  <div class="control">
-    <label for="temperature">Ambient Temperature:</label>
-    <select id="temperature">
-      <option value="low">&lt; 10°C</option>
-      <option value="medium" selected>10–25°C</option>
-      <option value="high">&gt; 25°C</option>
-    </select>
-  </div>
-  <div class="control">
-    <label for="precipitation">Precipitation:</label>
-    <select id="precipitation">
-      <option value="none" selected>No Rain</option>
-      <option value="light">Light Rain</option>
-      <option value="heavy">Heavy Rain</option>
-    </select>
-  </div>
-
-  <div class="control">
-    <p>Select a facility or click on the map for fallout origin. Then click a second point for fallout reach estimate.</p>
-    <div id="map"></div>
-  
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-  async function exportToPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+let map = L.map('map').setView([32.0, 53.0], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: 'Map data © OpenStreetMap contributors'
+}).addTo(map);
 
-    doc.setFontSize(16);
-    doc.text("Fallout Simulation Report", 10, 20);
+let originMarker, targetMarker, falloutEllipse, connector;
+const plantCoordinates = {
+  bushehr: [28.8296, 50.8919],
+  darkhovin: [30.7041, 48.4961],
+  arak: [34.3995, 49.7444],
+  natanz: [33.7243, 51.7269],
+  fordow: [34.7031, 50.9969],
+  isfahan: [32.6158, 51.6541],
+  tehran: [35.7070, 51.3950]
+};
 
-    const windDir = document.getElementById("windDir").value;
-    const windSpeed = document.getElementById("windSpeed").value;
-    const temp = document.getElementById("temperature").value;
-    const precip = document.getElementById("precipitation").value;
-    const facility = document.getElementById("plant").value;
+let origin = null;
+let target = null;
 
-    const inputSummary = `
-Facility: ${facility}
-Wind Direction: ${windDir}
-Wind Speed: ${windSpeed} km/h
-Temperature: ${temp}
-Precipitation: ${precip}
-    `.trim();
-
-    const lines = doc.splitTextToSize(inputSummary, 180);
-    doc.text(lines, 10, 30);
-
-    const mapArea = document.getElementById("map");
-    const canvas = await html2canvas(mapArea, { useCORS: true });
-    const imgData = canvas.toDataURL("image/png");
-
-    doc.addImage(imgData, 'PNG', 10, 60, 180, 90);
-    doc.save("Fallout_Simulation_Report.pdf");
+document.getElementById("plant").addEventListener("change", function() {
+  const plant = this.value;
+  if (plant && plantCoordinates[plant]) {
+    const coords = plantCoordinates[plant];
+    origin = L.latLng(coords[0], coords[1]);
+    if (originMarker) map.removeLayer(originMarker);
+    originMarker = L.marker(origin).addTo(map).bindPopup(plant).openPopup();
+    map.setView(origin, 8);
+    document.getElementById("result").innerText = "Now click a target location to simulate fallout travel time.";
   }
-</script>
-<button onclick="exportToPDF()">📄 Export to PDF</button>
+});
 
-
-  
-<div class="control">
-  <button onclick="calculateFallout()">☢️ Calculate Fallout</button>
-  <button onclick="exportToPDF()">📄 Export to PDF</button>
-</div>
-
-<div id="result">Status: Waiting for input...</div>
-
-  <script>
-    const plantCoordinates = {
-      bushehr: [28.8296, 50.8919],
-      darkhovin: [30.7041, 48.4961],
-      arak: [34.3995, 49.7444],
-      natanz: [33.7243, 51.7269],
-      fordow: [34.7031, 50.9969],
-      isfahan: [32.6158, 51.6541],
-      tehran: [35.7070, 51.3950]
-    };
-
-    const map = L.map('map').setView([32.0, 53.0], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Map data © OpenStreetMap contributors'
-    }).addTo(map);
-
-    let origin = null;
-    let target = null;
-    let originMarker, targetMarker, connector;
-
-    document.getElementById("plant").addEventListener("change", function() {
-      const selected = this.value;
-      if (selected && plantCoordinates[selected]) {
-        const coords = plantCoordinates[selected];
-        origin = L.latLng(coords[0], coords[1]);
-        map.setView(origin, 8);
-        if (originMarker) map.removeLayer(originMarker);
-        originMarker = L.marker(origin).addTo(map).bindPopup(selected.replace(/\b\w/g, c => c.toUpperCase())).openPopup();
-        document.getElementById("result").innerText = "Now click a target location to estimate fallout arrival time.";
-      }
-    });
-
-    function toRadians(deg) {
-      return deg * Math.PI / 180;
-    }
-
-    function toDegrees(rad) {
-      return rad * 180 / Math.PI;
-    }
-
-    function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371;
-      const dLat = toRadians(lat2 - lat1);
-      const dLon = toRadians(lon2 - lon1);
-      const a = Math.sin(dLat / 2) ** 2 +
-                Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-                Math.sin(dLon / 2) ** 2;
-      return 2 * R * Math.asin(Math.sqrt(a));
-    }
-
-    function getBearing(lat1, lon1, lat2, lon2) {
-      const dLon = toRadians(lon2 - lon1);
-      const y = Math.sin(dLon) * Math.cos(toRadians(lat2));
-      const x = Math.cos(toRadians(lat1)) * Math.sin(toRadians(lat2)) -
-                Math.sin(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.cos(dLon);
-      return (toDegrees(Math.atan2(y, x)) + 360) % 360;
-    }
-
-    map.on('click', function(e) {
-      if (!origin) {
-        origin = e.latlng;
-        if (originMarker) map.removeLayer(originMarker);
-        originMarker = L.marker(origin).addTo(map).bindPopup("Fallout Origin").openPopup();
-        document.getElementById("result").innerText = "Now click a target location to estimate fallout arrival time.";
-      } else {
-        target = e.latlng;
-        if (targetMarker) map.removeLayer(targetMarker);
-        if (connector) map.removeLayer(connector);
-        targetMarker = L.marker(target).addTo(map).bindPopup("Target Location").openPopup();
-        connector = L.polyline([origin, target], { color: 'blue', dashArray: '5,10' }).addTo(map);
-
-        const windDir = parseFloat(document.getElementById('windDir').value);
-        const windSpeed = parseFloat(document.getElementById('windSpeed').value);
-        const temp = document.getElementById('temperature').value;
-        const precip = document.getElementById('precipitation').value;
-
-        if (isNaN(windDir) || isNaN(windSpeed) || windSpeed <= 0) {
-          alert("Please enter valid wind direction and speed.");
-          return;
-        }
-
-        const distance = getDistance(origin.lat, origin.lng, target.lat, target.lng);
-        const bearing = getBearing(origin.lat, origin.lng, target.lat, target.lng);
-        const angleDiff = Math.abs(windDir - bearing);
-        const withinRange = angleDiff <= 45 || angleDiff >= 315;
-
-        let modifier = 1.0;
-        if (temp === 'low') modifier *= 0.9;
-        if (temp === 'high') modifier *= 1.2;
-        if (precip === 'light') modifier *= 0.9;
-        if (precip === 'heavy') modifier *= 0.7;
-
-        if (withinRange) {
-          const hours = (distance / windSpeed * modifier).toFixed(2);
-          document.getElementById("result").innerText = `Fallout is expected to reach this point in approximately ${hours} hours (adjusted for temp & rain).`;
-        } else {
-          document.getElementById("result").innerText = "Fallout is unlikely to reach this point due to wind direction.";
-        }
-
-        origin = null;
-      }
-    });
-  
-<script src="https://unpkg.com/leaflet-ellipse"></script>
-<script>
-  let falloutEllipse;
-
-  function drawFalloutEllipse(center, windDir, windSpeed, tempModifier) {
-    if (falloutEllipse) map.removeLayer(falloutEllipse);
-
-    const majorAxis = windSpeed * tempModifier * 10; // in km
-    const minorAxis = majorAxis / 3;
-
-    falloutEllipse = L.ellipse(center, [majorAxis * 1000, minorAxis * 1000], windDir, {
-      color: 'red',
-      weight: 2,
-      fillOpacity: 0.3
-    }).addTo(map);
+map.on('click', function(e) {
+  target = e.latlng;
+  if (!targetMarker) {
+    targetMarker = L.marker(target).addTo(map).bindPopup("Target").openPopup();
+  } else {
+    targetMarker.setLatLng(target);
   }
-</script>
+});
 
+function toRadians(deg) { return deg * Math.PI / 180; }
+function toDegrees(rad) { return rad * 180 / Math.PI; }
 
-<script>
-  let originMarker, targetMarker, connector, falloutEllipse;
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 
-  const plantCoordinates = {
-    bushehr: [28.8296, 50.8919],
-    darkhovin: [30.7041, 48.4961],
-    arak: [34.3995, 49.7444],
-    natanz: [33.7243, 51.7269],
-    fordow: [34.7031, 50.9969],
-    isfahan: [32.6158, 51.6541],
-    tehran: [35.7070, 51.3950]
-  };
+function getBearing(lat1, lon1, lat2, lon2) {
+  const dLon = toRadians(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toRadians(lat2));
+  const x = Math.cos(toRadians(lat1)) * Math.sin(toRadians(lat2)) -
+            Math.sin(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.cos(dLon);
+  return (toDegrees(Math.atan2(y, x)) + 360) % 360;
+}
 
-  const map = L.map('map').setView([32.0, 53.0], 6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: 'Map data © OpenStreetMap contributors'
+function drawFalloutEllipse(center, windDir, windSpeed, modifier) {
+  if (falloutEllipse) map.removeLayer(falloutEllipse);
+  const majorAxis = windSpeed * modifier * 10;
+  const minorAxis = majorAxis / 3;
+  falloutEllipse = L.ellipse(center, [majorAxis * 1000, minorAxis * 1000], windDir, {
+    color: 'red', weight: 2, fillOpacity: 0.3
   }).addTo(map);
+}
 
-  let origin = null;
-  let target = null;
-
-  document.getElementById("plant").addEventListener("change", function() {
-    const selected = this.value;
-    if (selected && plantCoordinates[selected]) {
-      const coords = plantCoordinates[selected];
-      origin = L.latLng(coords[0], coords[1]);
-      map.setView(origin, 8);
-      if (originMarker) map.removeLayer(originMarker);
-      originMarker = L.marker(origin).addTo(map).bindPopup(selected).openPopup();
-      document.getElementById("result").innerText = "Now click a target location to estimate fallout arrival time.";
-    }
-  });
-
-  map.on('click', function(e) {
-    if (!target) {
-      target = e.latlng;
-      if (targetMarker) map.removeLayer(targetMarker);
-      targetMarker = L.marker(target).addTo(map).bindPopup("Target Location").openPopup();
-    } else {
-      target = e.latlng;
-      targetMarker.setLatLng(target);
-    }
-  });
-
-  function toRadians(deg) {
-    return deg * Math.PI / 180;
+function calculateFallout() {
+  if (!origin || !target) {
+    alert("Please select a nuclear plant and target location on the map.");
+    return;
   }
 
-  function toDegrees(rad) {
-    return rad * 180 / Math.PI;
+  const windDir = parseFloat(document.getElementById("windDir").value);
+  const windSpeed = parseFloat(document.getElementById("windSpeed").value);
+  const temp = document.getElementById("temperature").value;
+  const rain = document.getElementById("precipitation").value;
+
+  if (isNaN(windDir) || isNaN(windSpeed) || windSpeed <= 0) {
+    alert("Enter valid wind direction and speed.");
+    return;
   }
 
-  function getDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = toRadians(lat2 - lat1);
-    const dLon = toRadians(lon2 - lon1);
-    const a = Math.sin(dLat / 2) ** 2 +
-              Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-              Math.sin(dLon / 2) ** 2;
-    return 2 * R * Math.asin(Math.sqrt(a));
+  let modifier = 1.0;
+  if (temp === "low") modifier *= 0.9;
+  else if (temp === "high") modifier *= 1.2;
+  if (rain === "light") modifier *= 0.9;
+  else if (rain === "heavy") modifier *= 0.7;
+
+  const distance = getDistance(origin.lat, origin.lng, target.lat, target.lng);
+  const bearing = getBearing(origin.lat, origin.lng, target.lat, target.lng);
+  const angleDiff = Math.abs(windDir - bearing);
+  const withinRange = angleDiff <= 45 || angleDiff >= 315;
+
+  drawFalloutEllipse(origin, windDir, windSpeed, modifier);
+  if (connector) map.removeLayer(connector);
+  connector = L.polyline([origin, target], { color: 'blue', dashArray: '5,10' }).addTo(map);
+
+  const result = document.getElementById("result");
+  if (withinRange) {
+    const hours = (distance / windSpeed * modifier).toFixed(2);
+    result.innerText = `☢️ Fallout will reach target in ~${hours} hours.`;
+  } else {
+    result.innerText = "🛑 Fallout unlikely to reach due to wind direction.";
   }
+}
 
-  function getBearing(lat1, lon1, lat2, lon2) {
-    const dLon = toRadians(lon2 - lon1);
-    const y = Math.sin(dLon) * Math.cos(toRadians(lat2));
-    const x = Math.cos(toRadians(lat1)) * Math.sin(toRadians(lat2)) -
-              Math.sin(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.cos(dLon);
-    return (toDegrees(Math.atan2(y, x)) + 360) % 360;
-  }
+async function exportToPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
 
-  function drawFalloutEllipse(center, windDir, windSpeed, tempModifier) {
-    if (falloutEllipse) map.removeLayer(falloutEllipse);
+  doc.setFontSize(16);
+  doc.text("Fallout Simulation Report", 10, 20);
+  const inputs = [
+    "Facility: " + document.getElementById("plant").value,
+    "Wind Dir: " + document.getElementById("windDir").value,
+    "Wind Speed: " + document.getElementById("windSpeed").value + " km/h",
+    "Temperature: " + document.getElementById("temperature").value,
+    "Precipitation: " + document.getElementById("precipitation").value
+  ];
+  doc.text(inputs.join("\n"), 10, 30);
 
-    const majorAxis = windSpeed * tempModifier * 10;
-    const minorAxis = majorAxis / 3;
+  const mapDiv = document.getElementById("map");
+  const canvas = await html2canvas(mapDiv, { useCORS: true });
+  const imgData = canvas.toDataURL("image/png");
+  doc.addImage(imgData, 'PNG', 10, 60, 180, 100);
 
-    falloutEllipse = L.ellipse(center, [majorAxis * 1000, minorAxis * 1000], windDir, {
-      color: 'red',
-      weight: 2,
-      fillOpacity: 0.3
-    }).addTo(map);
-  }
-
-  function calculateFallout() {
-    if (!origin || !target) {
-      alert("Please select both origin and target points.");
-      return;
-    }
-
-    const windDir = parseFloat(document.getElementById('windDir').value);
-    const windSpeed = parseFloat(document.getElementById('windSpeed').value);
-    const temp = document.getElementById('temperature').value;
-    const precip = document.getElementById('precipitation').value;
-
-    if (isNaN(windDir) || isNaN(windSpeed) || windSpeed <= 0) {
-      alert("Please enter valid wind direction and speed.");
-      return;
-    }
-
-    const bearing = getBearing(origin.lat, origin.lng, target.lat, target.lng);
-    const distance = getDistance(origin.lat, origin.lng, target.lat, target.lng);
-    const angleDiff = Math.abs(windDir - bearing);
-    const withinRange = angleDiff <= 45 || angleDiff >= 315;
-
-    let modifier = 1.0;
-    if (temp === 'low') modifier *= 0.9;
-    if (temp === 'high') modifier *= 1.2;
-    if (precip === 'light') modifier *= 0.9;
-    if (precip === 'heavy') modifier *= 0.7;
-
-    drawFalloutEllipse(origin, windDir, windSpeed, modifier);
-
-    if (connector) map.removeLayer(connector);
-    connector = L.polyline([origin, target], { color: 'blue', dashArray: '5,10' }).addTo(map);
-
-    if (withinRange) {
-      const hours = (distance / windSpeed * modifier).toFixed(2);
-      document.getElementById("result").innerText = `Fallout is expected to reach this point in approximately ${hours} hours (adjusted for temp & rain).`;
-    } else {
-      document.getElementById("result").innerText = "Fallout is unlikely to reach this point due to wind direction.";
-    }
-  }
+  doc.save("Fallout_Simulation_Report.pdf");
+}
 </script>
-<button onclick="calculateFallout()">☢️ Calculate Fallout</button>
 
-</script>
 </body>
 </html>
