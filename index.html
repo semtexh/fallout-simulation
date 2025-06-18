@@ -44,7 +44,25 @@
         <option value="tehran">Tehran</option>
       </select>
     </label>
-    <label>Wind Direction (°):
+    
+<label>Scenario Type:
+  <select id="scenarioType">
+    <option value="meltdown">Reactor Meltdown</option>
+    <option value="steam_fire">Steam Explosion + Fire</option>
+    <option value="high_temp_attack">High-Temperature Attack</option>
+  </select>
+</label>
+
+
+<label>Scenario Type:
+  <select id="scenarioType">
+    <option value="meltdown">Reactor Meltdown</option>
+    <option value="steam_fire">Steam Explosion + Fire</option>
+    <option value="high_temp_attack">High-Temperature Attack</option>
+  </select>
+</label>
+
+<label>Wind Direction (°):
       <input type="number" id="windDir" placeholder="e.g. 90">
     </label>
     <label>Wind Speed (km/h):
@@ -74,7 +92,12 @@
 
 <script>
 let map = L.map('map').setView([32.0, 53.0], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+let map = L.map('map').setView([32.0, 53.0], 6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a> contributors'
+}).addTo(map);
+
   attribution: 'Map data © OpenStreetMap contributors'
 }).addTo(map);
 
@@ -158,6 +181,16 @@ function calculateFallout() {
   }
 
   let modifier = 1.0;
+
+  let scenario = document.getElementById("scenarioType").value;
+  if (scenario === "steam_fire") modifier *= 1.1;
+  else if (scenario === "high_temp_attack") modifier *= 1.2;
+
+
+  let scenario = document.getElementById("scenarioType").value;
+  if (scenario === "steam_fire") modifier *= 1.1;
+  else if (scenario === "high_temp_attack") modifier *= 1.2;
+
   if (temp === "low") modifier *= 0.9;
   else if (temp === "high") modifier *= 1.2;
   if (rain === "light") modifier *= 0.9;
@@ -192,7 +225,7 @@ async function exportToPDF() {
     "Wind Dir: " + document.getElementById("windDir").value,
     "Wind Speed: " + document.getElementById("windSpeed").value + " km/h",
     "Temperature: " + document.getElementById("temperature").value,
-    "Precipitation: " + document.getElementById("precipitation").value
+    "Precipitation: " + document.getElementById("precipitation").value + "\nScenario: " + document.getElementById("scenarioType").value + "\nScenario: " + document.getElementById("scenarioType").value
   ];
   doc.text(inputs.join("\n"), 10, 30);
 
@@ -208,7 +241,12 @@ async function exportToPDF() {
 
 <script>
 let map = L.map('map').setView([32.0, 53.0], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+let map = L.map('map').setView([32.0, 53.0], 6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a> contributors'
+}).addTo(map);
+
   attribution: 'Map data © OpenStreetMap contributors'
 }).addTo(map);
 
@@ -303,6 +341,16 @@ function calculateFallout() {
   }
 
   let modifier = 1.0;
+
+  let scenario = document.getElementById("scenarioType").value;
+  if (scenario === "steam_fire") modifier *= 1.1;
+  else if (scenario === "high_temp_attack") modifier *= 1.2;
+
+
+  let scenario = document.getElementById("scenarioType").value;
+  if (scenario === "steam_fire") modifier *= 1.1;
+  else if (scenario === "high_temp_attack") modifier *= 1.2;
+
   if (temp === "low") modifier *= 0.9;
   else if (temp === "high") modifier *= 1.2;
   if (rain === "light") modifier *= 0.9;
@@ -337,7 +385,7 @@ async function exportToPDF() {
     "Wind Dir: " + document.getElementById("windDir").value,
     "Wind Speed: " + document.getElementById("windSpeed").value + " km/h",
     "Temperature: " + document.getElementById("temperature").value,
-    "Precipitation: " + document.getElementById("precipitation").value
+    "Precipitation: " + document.getElementById("precipitation").value + "\nScenario: " + document.getElementById("scenarioType").value + "\nScenario: " + document.getElementById("scenarioType").value
   ];
   doc.text(inputs.join("\n"), 10, 30);
 
@@ -351,7 +399,12 @@ async function exportToPDF() {
 
 <script>
 let map = L.map('map').setView([32.0, 53.0], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+let map = L.map('map').setView([32.0, 53.0], 6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a> contributors'
+}).addTo(map);
+
   attribution: 'Map data © OpenStreetMap contributors'
 }).addTo(map);
 
@@ -445,6 +498,16 @@ function calculateFallout() {
   }
 
   let modifier = 1.0;
+
+  let scenario = document.getElementById("scenarioType").value;
+  if (scenario === "steam_fire") modifier *= 1.1;
+  else if (scenario === "high_temp_attack") modifier *= 1.2;
+
+
+  let scenario = document.getElementById("scenarioType").value;
+  if (scenario === "steam_fire") modifier *= 1.1;
+  else if (scenario === "high_temp_attack") modifier *= 1.2;
+
   if (temp === "low") modifier *= 0.9;
   else if (temp === "high") modifier *= 1.2;
   if (rain === "light") modifier *= 0.9;
@@ -483,7 +546,7 @@ async function exportToPDF() {
     "Wind Dir: " + document.getElementById("windDir").value,
     "Wind Speed: " + document.getElementById("windSpeed").value + " km/h",
     "Temperature: " + document.getElementById("temperature").value,
-    "Precipitation: " + document.getElementById("precipitation").value
+    "Precipitation: " + document.getElementById("precipitation").value + "\nScenario: " + document.getElementById("scenarioType").value + "\nScenario: " + document.getElementById("scenarioType").value
   ];
   doc.text(inputs.join("\n"), 10, 30);
   doc.text(latestResult || "No fallout result yet.", 10, 50);
@@ -498,7 +561,12 @@ async function exportToPDF() {
 
 <script>
 let map = L.map('map').setView([32.0, 53.0], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+let map = L.map('map').setView([32.0, 53.0], 6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a> contributors'
+}).addTo(map);
+
   attribution: 'Map data © OpenStreetMap contributors'
 }).addTo(map);
 
@@ -592,6 +660,16 @@ function calculateFallout() {
   }
 
   let modifier = 1.0;
+
+  let scenario = document.getElementById("scenarioType").value;
+  if (scenario === "steam_fire") modifier *= 1.1;
+  else if (scenario === "high_temp_attack") modifier *= 1.2;
+
+
+  let scenario = document.getElementById("scenarioType").value;
+  if (scenario === "steam_fire") modifier *= 1.1;
+  else if (scenario === "high_temp_attack") modifier *= 1.2;
+
   if (temp === "low") modifier *= 0.9;
   else if (temp === "high") modifier *= 1.2;
   if (rain === "light") modifier *= 0.9;
@@ -632,7 +710,7 @@ async function exportToPDF() {
     "Wind Dir: " + document.getElementById("windDir").value,
     "Wind Speed: " + document.getElementById("windSpeed").value + " km/h",
     "Temperature: " + document.getElementById("temperature").value,
-    "Precipitation: " + document.getElementById("precipitation").value
+    "Precipitation: " + document.getElementById("precipitation").value + "\nScenario: " + document.getElementById("scenarioType").value + "\nScenario: " + document.getElementById("scenarioType").value
   ];
   doc.text(inputs.join("\n"), 10, 30);
 
