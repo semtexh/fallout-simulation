@@ -25,6 +25,11 @@
   </style>
 </head>
 <body>
+
+<div id="overlayTime" style="position:absolute; z-index:999; top:70px; left:10px; background:rgba(0,0,0,0.6); color:white; padding:4px 10px; border-radius:4px; font-size:14px;">
+  ⏱ ETA: Not calculated
+</div>
+
   <h2>Fallout Simulation Tool</h2>
   <div class="controls">
     <label>Nuclear Plant:
@@ -487,6 +492,159 @@ async function exportToPDF() {
   const img = canvas.toDataURL("image/png");
   doc.addImage(img, 'PNG', 10, 60, 180, 100);
   doc.save("Fallout_Simulation_Report.pdf");
+}
+</script>
+
+
+<script>
+let map = L.map('map').setView([32.0, 53.0], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: 'Map data © OpenStreetMap contributors'
+}).addTo(map);
+
+let originMarker, targetMarker, falloutEllipse, connector;
+const plantCoordinates = {
+  bushehr: [28.8296, 50.8919],
+  darkhovin: [30.7041, 48.4961],
+  arak: [34.3995, 49.7444],
+  natanz: [33.7243, 51.7269],
+  fordow: [34.7031, 50.9969],
+  isfahan: [32.6158, 51.6541],
+  tehran: [35.7070, 51.3950]
+};
+
+let origin = null;
+let target = null;
+let latestResult = "";
+
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition((position) => {
+    const latlng = [position.coords.latitude, position.coords.longitude];
+    origin = L.latLng(latlng[0], latlng[1]);
+    originMarker = L.marker(origin).addTo(map).bindPopup("Your Location").openPopup();
+    map.setView(origin, 8);
+    document.getElementById("result").innerText = "Using your current location as fallout origin.";
+  });
+}
+
+document.getElementById("plant").addEventListener("change", function() {
+  const plant = this.value;
+  if (plant && plantCoordinates[plant]) {
+    const coords = plantCoordinates[plant];
+    origin = L.latLng(coords[0], coords[1]);
+    if (originMarker) map.removeLayer(originMarker);
+    originMarker = L.marker(origin).addTo(map).bindPopup(plant).openPopup();
+    map.setView(origin, 8);
+    document.getElementById("result").innerText = "Now click a target location to simulate fallout travel time.";
+  }
+});
+
+map.on('click', function(e) {
+  target = e.latlng;
+  if (!targetMarker) {
+    targetMarker = L.marker(target).addTo(map);
+  }
+  targetMarker.setLatLng(target);
+});
+
+function toRadians(deg) { return deg * Math.PI / 180; }
+function toDegrees(rad) { return rad * 180 / Math.PI; }
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function getBearing(lat1, lon1, lat2, lon2) {
+  const dLon = toRadians(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toRadians(lat2));
+  const x = Math.cos(toRadians(lat1)) * Math.sin(toRadians(lat2)) -
+            Math.sin(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.cos(dLon);
+  return (toDegrees(Math.atan2(y, x)) + 360) % 360;
+}
+
+function drawFalloutEllipse(center, windDir, windSpeed, modifier) {
+  if (falloutEllipse) map.removeLayer(falloutEllipse);
+  const majorAxis = windSpeed * modifier * 10;
+  const minorAxis = majorAxis / 3;
+  falloutEllipse = L.ellipse(center, [majorAxis * 1000, minorAxis * 1000], windDir, {
+    color: 'red', weight: 2, fillOpacity: 0.3
+  }).addTo(map);
+}
+
+function calculateFallout() {
+  if (!origin || !target) {
+    alert("Please select a nuclear plant or use current location, then pick a target location.");
+    return;
+  }
+
+  const windDir = parseFloat(document.getElementById("windDir").value);
+  const windSpeed = parseFloat(document.getElementById("windSpeed").value);
+  const temp = document.getElementById("temperature").value;
+  const rain = document.getElementById("precipitation").value;
+
+  if (isNaN(windDir) || isNaN(windSpeed) || windSpeed <= 0) {
+    alert("Enter valid wind direction and speed.");
+    return;
+  }
+
+  let modifier = 1.0;
+  if (temp === "low") modifier *= 0.9;
+  else if (temp === "high") modifier *= 1.2;
+  if (rain === "light") modifier *= 0.9;
+  else if (rain === "heavy") modifier *= 0.7;
+
+  const distance = getDistance(origin.lat, origin.lng, target.lat, target.lng);
+  const bearing = getBearing(origin.lat, origin.lng, target.lat, target.lng);
+  const angleDiff = Math.abs(windDir - bearing);
+  const withinRange = angleDiff <= 45 || angleDiff >= 315;
+
+  const overlay = document.getElementById("overlayTime");
+
+  if (connector) map.removeLayer(connector);
+  connector = L.polyline([origin, target], { color: 'blue', dashArray: '5,10' }).addTo(map);
+
+  if (withinRange) {
+    const hours = (distance / windSpeed * modifier).toFixed(2);
+    latestResult = `☢️ Fallout ETA: ~${hours} hours`;
+    document.getElementById("result").innerText = latestResult;
+    targetMarker.bindPopup(latestResult).openPopup();
+    overlay.innerText = latestResult;
+  } else {
+    latestResult = "🛑 Fallout unlikely to reach due to wind direction.";
+    document.getElementById("result").innerText = latestResult;
+    targetMarker.bindPopup(latestResult).openPopup();
+    overlay.innerText = latestResult;
+  }
+}
+
+async function exportToPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text("Fallout Simulation Report", 10, 20);
+  const inputs = [
+    "Facility: " + document.getElementById("plant").value,
+    "Wind Dir: " + document.getElementById("windDir").value,
+    "Wind Speed: " + document.getElementById("windSpeed").value + " km/h",
+    "Temperature: " + document.getElementById("temperature").value,
+    "Precipitation: " + document.getElementById("precipitation").value
+  ];
+  doc.text(inputs.join("\n"), 10, 30);
+
+  const overlay = document.getElementById("overlayTime");
+  overlay.style.display = "block";
+
+  const canvas = await html2canvas(document.getElementById("map"), { useCORS: true });
+  const img = canvas.toDataURL("image/png");
+  doc.addImage(img, 'PNG', 10, 60, 180, 100);
+  doc.save("Fallout_Simulation_Report.pdf");
+
+  overlay.style.display = "none";
 }
 </script>
 
