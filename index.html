@@ -2,139 +2,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Fallout Simulation Tool - Gaussian Plume Model</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.ellipse@1.0.2/dist/leaflet.ellipse.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 12px; }
-    h2 { text-align: center; margin-bottom: 10px; }
-    .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; }
-    .controls label { flex: 1 1 200px; font-size: 14px; }
-    select, input, button { width: 100%; padding: 6px; font-size: 14px; margin-top: 4px; }
-    #map { height: 400px; width: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
-    #overlayTime { position: absolute; top: 420px; left: 15px; background: rgba(0,0,0,0.7); color: #fff; padding: 6px 12px; border-radius: 4px; z-index: 1000; }
-    #result { margin-top: 12px; font-weight: bold; }
-    @media (max-width:600px) { .controls { flex-direction: column; } }
-  </style>
+    <meta charset="UTF-8">
+    <title>Global Fallout Simulator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        #map { height: 80vh; width: 100%; }
+        .controls { padding: 1em; background: #f5f5f5; }
+        select, input { margin: 0.5em 0; padding: 0.5em; width: 100%; max-width: 300px; }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
-  <h2>Fallout Simulation Tool - Gaussian Plume</h2>
-  <div class="controls">
-    <label>Country:
-      <select id="country"><option value="">Select country</option></select>
-    </label>
-    <label>Plant:
-      <select id="plant" disabled><option value="">Select plant</option></select>
-    </label>
-    <label>Wind Dir (°):
-      <input type="number" id="windDir" placeholder="e.g. 90">
-    </label>
-    <label>Wind Speed (m/s):
-      <input type="number" id="windSpeed" placeholder="e.g. 10">
-    </label>
-    <label>Release Height (m):
-      <input type="number" id="releaseHeight" placeholder="e.g. 50">
-    </label>
-    <label>Release Rate (Bq/s):
-      <input type="number" id="releaseRate" placeholder="e.g. 1e12">
-    </label>
-    <label>Stability Class:
-      <select id="stability">
-        <option value="A">A</option>
-        <option value="B">B</option>
-        <option value="C">C</option>
-        <option value="D" selected>D</option>
-        <option value="E">E</option>
-        <option value="F">F</option>
-      </select>
-    </label>
-  </div>
-  <div class="controls">
-    <button onclick="calculatePlume()">☢️ Calculate Plume</button>
-    <button onclick="exportToPDF()">📄 Export to PDF</button>
-  </div>
-  <div id="map"></div>
-  <div id="overlayTime">ETA: N/A (click map)</div>
-  <div id="result"></div>
-  <script>
-    const plantsData = [
-      {"name":"Bushehr","country":"Iran","lat":28.9682,"lng":50.8346},
-      {"name":"Darkhovin","country":"Iran","lat":30.7033,"lng":48.4036},
-      {"name":"Fukushima","country":"Japan","lat":37.4210,"lng":141.0328},
-      {"name":"Chernobyl","country":"Ukraine","lat":51.3890,"lng":30.0998}
-    ];
-    document.addEventListener('DOMContentLoaded', () => {
-      const countrySel = document.getElementById('country');
-      [...new Set(plantsData.map(p=>p.country))].sort().forEach(c=>{
-        const opt=document.createElement('option');
-        opt.value=c; opt.text=c; countrySel.add(opt);
-      });
-      countrySel.addEventListener('change',()=>{
-        const plantSel=document.getElementById('plant');
-        plantSel.innerHTML='<option value="">Select plant</option>';
-        plantsData.filter(p=>p.country===countrySel.value)
-          .forEach(p=>{
-            const opt=document.createElement('option');
-            opt.value=JSON.stringify([p.lat,p.lng]);
-            opt.text=p.name; plantSel.add(opt);
-          });
-        plantSel.disabled=!countrySel.value;
-      });
-      window.map = L.map('map').setView([20,0],2);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
-    });
+<div class="controls">
+    <h2>🌍 Fallout Simulator</h2>
+    <label for="country">Select Country:</label>
+    <select id="country"></select>
 
-    const stabilityParams = {
-      A:{a:0.22,b:0.5,c:0.20,d:0.5}, B:{a:0.16,b:0.5,c:0.12,d:0.5},
-      C:{a:0.11,b:0.5,c:0.08,d:0.5}, D:{a:0.08,b:0.5,c:0.06,d:0.5},
-      E:{a:0.06,b:0.5,c:0.03,d:0.5}, F:{a:0.04,b:0.5,c:0.016,d:0.5}
-    };
-    function sigmaY(x,cls){const p=stabilityParams[cls];return p.a*Math.pow(x,p.b);}
-    function sigmaZ(x,cls){const p=stabilityParams[cls];return p.c*Math.pow(x,p.d);}
-    function toRad(d){return d*Math.PI/180;}
+    <label for="plant">Select Nuclear Plant:</label>
+    <select id="plant"></select>
 
-    function calculatePlume(){
-      const plantVal = document.getElementById('plant').value;
-      const windDir = parseFloat(document.getElementById('windDir').value);
-      const windSpeed = parseFloat(document.getElementById('windSpeed').value);
-      const H = parseFloat(document.getElementById('releaseHeight').value);
-      const Q = parseFloat(document.getElementById('releaseRate').value);
-      const cls = document.getElementById('stability').value;
-      if(!plantVal||isNaN(windDir)||isNaN(windSpeed)||isNaN(H)||isNaN(Q)){
-        alert('Please fill all fields'); return;
-      }
-      const [lat,lng] = JSON.parse(plantVal);
-      if(window.originMarker) map.removeLayer(originMarker);
-      window.originMarker = L.marker([lat,lng]).addTo(map).bindPopup('Source').openPopup();
-      map.setView([lat,lng],6);
-      if(window.plumeZone) map.removeLayer(plumeZone);
-      window.plumeZone = L.ellipse([lat,lng],[windSpeed*1000,windSpeed*300],windDir,{color:'red',fill:false}).addTo(map);
-      document.getElementById('overlayTime').innerText='Click map for concentration';
-      map.once('click', e=>{
-        const R=6371000;
-        const φ1 = toRad(lat), φ2 = toRad(e.latlng.lat);
-        const Δφ = toRad(e.latlng.lat-lat), Δλ = toRad(e.latlng.lng-lng);
-        const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
-        const dist = 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-        const bearing = Math.atan2(Math.sin(Δλ)*Math.cos(φ2),
-          Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ));
-        let theta = (bearing*180/Math.PI+360)%360;
-        const alpha = Math.abs(theta - windDir);
-        const x = dist*Math.cos(toRad(alpha)), y = dist*Math.sin(toRad(alpha));
-        const sy = sigmaY(x,cls), sz = sigmaZ(x,cls);
-        const conc = Q/(2*Math.PI*windSpeed*sy*sz) *
-          Math.exp(-y*y/(2*sy*sy)) *
-          (Math.exp(-(H*H)/(2*sz*sz)) + Math.exp(-((H*3)*(H*3))/(2*sz*sz)));
-        L.circleMarker(e.latlng,{radius:8,color:'purple'})
-          .addTo(map).bindPopup(`Conc: ${conc.toExponential(2)} Bq/m³`).openPopup();
-        document.getElementById('result').innerText=
-          `Concentration ≈ ${conc.toExponential(2)} Bq/m³`;
-      });
-    }
-    function exportToPDF(){ alert('PDF export not implemented yet'); }
-  </script>
+    <label for="scenario">Scenario Type:</label>
+    <select id="scenario">
+        <option value="meltdown">Reactor Meltdown</option>
+        <option value="steam">Steam Explosion and Fire</option>
+        <option value="attack">High-Temperature Attack</option>
+    </select>
+
+    <label for="windSpeed">Wind Speed (km/h):</label>
+    <input type="number" id="windSpeed" value="20">
+
+    <label for="windDirection">Wind Direction (°):</label>
+    <input type="number" id="windDirection" value="90">
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    let plantsData = [];
+    let map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+    }).addTo(map);
+
+    fetch('nuclear_plants.json')
+        .then(res => res.json())
+        .then(data => {
+            plantsData = data;
+            const countrySet = new Set(data.map(p => p.country));
+            const countrySel = document.getElementById('country');
+            for (let country of [...countrySet].sort()) {
+                const opt = document.createElement('option');
+                opt.value = country;
+                opt.textContent = country;
+                countrySel.appendChild(opt);
+            }
+
+            countrySel.addEventListener('change', () => {
+                const selectedCountry = countrySel.value;
+                const plantSel = document.getElementById('plant');
+                plantSel.innerHTML = '';
+                const filtered = data.filter(p => p.country === selectedCountry);
+                for (let p of filtered) {
+                    const opt = document.createElement('option');
+                    opt.value = `${p.latitude},${p.longitude}`;
+                    opt.textContent = p.name;
+                    plantSel.appendChild(opt);
+                }
+            });
+
+            document.getElementById('plant').addEventListener('change', (e) => {
+                const coords = e.target.value.split(',');
+                map.setView([parseFloat(coords[0]), parseFloat(coords[1])], 7);
+                L.marker([parseFloat(coords[0]), parseFloat(coords[1])]).addTo(map);
+            });
+        });
+</script>
 </body>
 </html>
