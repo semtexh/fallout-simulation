@@ -47,36 +47,41 @@
 
     fetch('nuclear_plants.json')
         .then(res => res.json())
-        .then(data => {
-            plantsData = data;
-            const countrySet = new Set(data.map(p => p.country));
+        .then(json => {
+            plantsData = json.features;
             const countrySel = document.getElementById('country');
-            for (let country of [...countrySet].sort()) {
+            const countries = [...new Set(plantsData.map(p => p.properties.Country))].sort();
+            countries.forEach(country => {
                 const opt = document.createElement('option');
                 opt.value = country;
                 opt.textContent = country;
                 countrySel.appendChild(opt);
-            }
+            });
 
             countrySel.addEventListener('change', () => {
                 const selectedCountry = countrySel.value;
                 const plantSel = document.getElementById('plant');
                 plantSel.innerHTML = '';
-                const filtered = data.filter(p => p.country === selectedCountry);
-                for (let p of filtered) {
+                const filtered = plantsData.filter(p => p.properties.Country === selectedCountry);
+                filtered.forEach(p => {
                     const opt = document.createElement('option');
-                    opt.value = `${p.latitude},${p.longitude}`;
-                    opt.textContent = p.name;
+                    const lat = p.geometry.coordinates[1];
+                    const lon = p.geometry.coordinates[0];
+                    opt.value = `${lat},${lon}`;
+                    opt.textContent = p.properties.Name;
                     plantSel.appendChild(opt);
-                }
+                });
             });
 
             document.getElementById('plant').addEventListener('change', (e) => {
                 const coords = e.target.value.split(',');
-                map.setView([parseFloat(coords[0]), parseFloat(coords[1])], 7);
-                L.marker([parseFloat(coords[0]), parseFloat(coords[1])]).addTo(map);
+                const lat = parseFloat(coords[0]);
+                const lon = parseFloat(coords[1]);
+                map.setView([lat, lon], 7);
+                L.marker([lat, lon]).addTo(map);
             });
-        });
+        })
+        .catch(err => console.error("Failed to load JSON:", err));
 </script>
 </body>
 </html>
