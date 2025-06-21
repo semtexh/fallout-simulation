@@ -2,94 +2,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Fallout Simulator v2</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    body { font-family: sans-serif; padding: 1rem; }
-    label { display: block; margin-top: 1em; }
-    select, input, button { padding: 0.4em; margin-top: 0.2em; width: 100%; max-width: 300px; }
-    #map { height: 60vh; width: 100%; margin-top: 1em; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Fallout Simulator - Weather Enhanced</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; }
+        #map { height: 100%; }
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 999;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            width: 230px;
+        }
+        .control-panel label {
+            display: block;
+            margin: 6px 0 2px;
+        }
+        .control-panel select, .control-panel input {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 8px;
+        }
+    </style>
+
+<style>
+  body, html { margin: 0; padding: 0; height: 100%; }
+  #map { height: 100%; }
+
+  .control-panel {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 999;
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      width: 230px;
+      overflow-y: auto;
+      max-height: 90vh;
+  }
+
+  @media (max-width: 768px) {
+    .control-panel {
+        position: relative;
+        width: 100%;
+        max-height: none;
+        box-shadow: none;
+        border-radius: 0;
+    }
+    #map {
+        height: calc(100% - 300px); /* Adjust height based on panel height */
+    }
+  }
+</style>
+
 </head>
 <body>
-  <h2>🌍 Fallout Simulator (v2)</h2>
+<div class="control-panel">
+    
+    <label>📘 Scenario Type</label>
+    <select id="scenarioSelect">
+        <option value="1.0">Reactor Meltdown (Fukushima-like)</option>
+        <option value="1.1">Steam Explosion & Fire (Chernobyl-like)</option>
+        <option value="1.2">High-Temperature Attack</option>
+    </select>
 
-  <label for="country">Select Country:</label>
-  <select id="country"><option value="">-- Select Country --</option></select>
+    <label>☢ Select Facility</label>
+    
+    <select id="facilitySelect">
+        <option value="">-- Choose --</option>
+        <option value="Chernobyl">Chernobyl (Ukraine)</option>
+        <option value="Fukushima">Fukushima (Japan)</option>
+        <option value="Bushehr">Bushehr (Iran)</option>
+        <option value="Dimona">Dimona (Israel)</option>
+        <option value="Zaporizhzhia">Zaporizhzhia (Ukraine)</option>
+        <option value="Akkuyu">Akkuyu (Turkey)</option>
+        <option value="Bohunice">Bohunice (Slovakia)</option>
+        <option value="Gravelines">Gravelines (France)</option>
+        <option value="Indian Point">Indian Point (USA)</option>
+        <option value="Kashiwazaki">Kashiwazaki-Kariwa (Japan)</option>
+    </select>
 
-  <label for="plant">Nuclear Plant:</label>
-  <select id="plant"><option value="">-- Select Plant --</option></select>
+    <label>🧭 Wind Direction</label>
+    <select id="windDir">
+        <option value="0">North</option>
+        <option value="45">NE</option>
+        <option value="90">East</option>
+        <option value="135">SE</option>
+        <option value="180">South</option>
+        <option value="225">SW</option>
+        <option value="270">West</option>
+        <option value="315">NW</option>
+    </select>
 
-  <label for="scenario">Scenario Type:</label>
-  <select id="scenario">
-    <option value="meltdown">Reactor Meltdown</option>
-    <option value="steam_fire">Steam Explosion + Fire</option>
-    <option value="attack">High-Temperature Attack</option>
-  </select>
+    <label>💨 Wind Speed (km/h)</label>
+    <input type="number" id="windSpeed" value="20" min="1" max="300">
 
-  <label for="windDir">Wind Direction (°):</label>
-  <input type="number" id="windDir" placeholder="e.g. 90" />
+    <label>🌡️ Temperature</label>
+    <select id="tempSelect">
+        <option value="1.0">Low (0–10°C)</option>
+        <option value="1.1">Moderate (11–25°C)</option>
+        <option value="1.2">High (26°C and above)</option>
+    </select>
 
-  <label for="windSpeed">Wind Speed (km/h):</label>
-  <input type="number" id="windSpeed" placeholder="e.g. 30" />
+    <label>🌧️ Precipitation</label>
+    <select id="precipSelect">
+        <option value="1.0">None</option>
+        <option value="0.9">Light</option>
+        <option value="0.7">Heavy</option>
+    </select>
+</div>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-ellipse"></script>
+<script>
+function bearingTo(lat1, lon1, lat2, lon2) {
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+    const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+              Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+    let brng = Math.atan2(y, x) * 180 / Math.PI;
+    return (brng + 360) % 360;
+}
 
-  <label for="temp">Temperature:</label>
-  <select id="temp">
-    <option value="cold">Cold</option>
-    <option value="normal" selected>Normal</option>
-    <option value="hot">Hot</option>
-  </select>
+    const facilities = {
+        "Chernobyl": [51.2768, 30.2219],
+        "Fukushima": [37.4215, 141.0328],
+        "Bushehr": [28.8294, 50.8917],
+        "Dimona": [31.0056, 35.1422],
+        "Zaporizhzhia": [47.5111, 34.5858],
+        "Akkuyu": [36.1554, 33.5417],
+        "Bohunice": [48.4945, 17.6837],
+        "Gravelines": [50.9867, 2.1275],
+        "Indian Point": [41.2708, -73.9514],
+        "Kashiwazaki": [37.425, 138.583]
+    };
 
-  <label for="precip">Precipitation:</label>
-  <select id="precip">
-    <option value="none" selected>None</option>
-    <option value="rain">Rain</option>
-    <option value="snow">Snow</option>
-  </select>
+    const map = L.map("map").setView([39.0, 35.0], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
 
-  <div id="map"></div>
+    let falloutOrigin = null;
+    let falloutZones = [];
+let falloutMarker = null;
+let etaMarker = null;
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const countrySel = document.getElementById("country");
-    const plantSel = document.getElementById("plant");
-    let map = L.map('map').setView([20, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    function drawEllipticalZones(origin) {
+        if (falloutMarker) map.removeLayer(falloutMarker);
+        falloutMarker = L.marker(origin).addTo(map);
+    
+        falloutZones.forEach(zone => map.removeLayer(zone));
+        falloutZones = [];
 
-    let allPlants = [];
+        const direction = parseFloat(document.getElementById("windDir").value);
+        const windSpeed = parseFloat(document.getElementById("windSpeed").value);
+        const tempFactor = parseFloat(document.getElementById("tempSelect").value);
+        const precipFactor = parseFloat(document.getElementById("precipSelect").value);
 
-    fetch("nuclear_plants.json")
-      .then(res => res.json())
-      .then(data => {
-        allPlants = data.features;
-        const countries = [...new Set(allPlants.map(p => p.properties.Country))].sort();
-        for (let c of countries) {
-          let opt = document.createElement("option");
-          opt.value = c;
-          opt.textContent = c;
-          countrySel.appendChild(opt);
+        for (let hour = 1; hour <= 3; hour++) {
+            const scenarioFactor = parseFloat(document.getElementById('scenarioSelect').value);
+        const spread = windSpeed * 1000 * hour * tempFactor * precipFactor * scenarioFactor;
+            const minor = spread * 0.5;
+            const color = hour === 1 ? 'red' : hour === 2 ? 'orange' : 'yellow';
+
+            const ellipse = L.ellipse(origin, [minor, spread], direction, {
+                color: color,
+                weight: 1,
+                fillOpacity: 0.25
+            }).addTo(map);
+
+            falloutZones.push(ellipse);
         }
-      });
+    }
 
-    countrySel.addEventListener("change", () => {
-      const selectedCountry = countrySel.value;
-      plantSel.innerHTML = '<option value="">-- Select Plant --</option>';
-      const filtered = allPlants.filter(p => p.properties.Country === selectedCountry);
-      for (let plant of filtered) {
-        let opt = document.createElement("option");
-        opt.value = `${plant.geometry.coordinates[1]},${plant.geometry.coordinates[0]}`;
-        opt.textContent = plant.properties.Name;
-        plantSel.appendChild(opt);
-      }
+    function recalculateIfOriginSet() {
+        if (falloutOrigin) drawEllipticalZones(falloutOrigin);
+    }
+
+    ["windDir", "windSpeed", "tempSelect", "precipSelect", "scenarioSelect"].forEach(id =>
+        document.getElementById(id).addEventListener("change", recalculateIfOriginSet)
+    );
+
+    document.getElementById("facilitySelect").addEventListener("change", function () {
+        const selected = this.value;
+        if (!selected || !(selected in facilities)) return;
+        const coords = facilities[selected];
+        falloutOrigin = L.latLng(coords[0], coords[1]);
+        map.setView(falloutOrigin, 7);
+        drawEllipticalZones(falloutOrigin);
     });
 
-    plantSel.addEventListener("change", () => {
-      const [lat, lng] = plantSel.value.split(',').map(parseFloat);
-      map.setView([lat, lng], 8);
-      L.marker([lat, lng]).addTo(map);
+    map.on("click", function (e) {
+        if (falloutMarker && falloutOrigin && falloutMarker.getLatLng().equals(e.latlng)) return;
+        if (etaMarker) map.removeLayer(etaMarker);
+        etaMarker = L.marker(e.latlng, {icon: L.icon({iconUrl: 'https://cdn-icons-png.flaticon.com/512/484/484167.png', iconSize: [20, 20]})}).addTo(map);
+    
+        if (!falloutOrigin) {
+            falloutOrigin = e.latlng;
+            drawEllipticalZones(falloutOrigin);
+        } else {
+            const windSpeed = parseFloat(document.getElementById("windSpeed").value);
+            const dist = map.distance(falloutOrigin, e.latlng);
+            
+        const lat1 = falloutOrigin.lat;
+        const lon1 = falloutOrigin.lng;
+        const lat2 = e.latlng.lat;
+        const lon2 = e.latlng.lng;
+
+        const bearing = bearingTo(lat1, lon1, lat2, lon2);
+        
+        let windBearing = parseFloat(document.getElementById("windDir").value);
+        windBearing = (windBearing + 180) % 360; // fallout direction is opposite wind direction
+        
+        let angleDiff = Math.abs(bearing - windBearing);
+        if (angleDiff > 180) angleDiff = 360 - angleDiff;
+        const alignmentFactor = Math.cos(angleDiff * Math.PI / 180);
+        const correction = alignmentFactor > 0 ? 1 / alignmentFactor : Infinity;
+        const eta = correction !== Infinity ? (dist / 1000 / windSpeed) * correction : -1;
+        
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent(
+        eta >= 0 ? "☢ Fallout ETA: " + eta.toFixed(1) + " hours"
+                 : "⚠️ Fallout likely won’t reach this location due to wind direction"
+        )
+                .openOn(map);
+        }
     });
-  </script>
+</script>
 </body>
 </html>
